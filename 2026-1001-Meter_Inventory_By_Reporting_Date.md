@@ -3,7 +3,7 @@
 **SQL author:** Teo Espero, IT Administrator, Marina Coast Water District  
 **SQL version:** 1.3  
 **Guide date:** October 13, 2026  
-**Source reviewed:** `2026-1001-Meter_Inventory_By_Reporting_Date(3).sql`
+**Source reviewed:** `2026-1001-Meter_Inventory_By_Reporting_Date.sql`
 
 ## What this report counts
 

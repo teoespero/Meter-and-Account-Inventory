@@ -3,7 +3,7 @@
 **SQL author:** Teo Espero, IT Administrator, Marina Coast Water District  
 **SQL version:** 1.6  
 **Guide date:** October 13, 2026  
-**Source reviewed:** `2026-1001-Water_Account_Counts_By_Reporting_Date(1).sql`
+**Source reviewed:** `2026-1001-Water_Account_Counts_By_Reporting_Date.sql`
 
 ## What this report counts
 

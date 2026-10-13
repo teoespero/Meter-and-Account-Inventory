@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Meter Inventory Guide</title><style>*{box-sizing:border-box}body{margin:0;background:#f1f5f6;color:#20313c;font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1080px;margin:36px auto;background:#fff;padding:48px 56px;border-top:7px solid #087e83;box-shadow:0 8px 36px #1231400b}h1{font-size:32px;line-height:1.2;color:#07565c;margin-top:0}h2{font-size:23px;margin-top:38px;padding-top:10px;border-top:1px solid #dce7e9;color:#07565c}h3{font-size:18px;margin-top:26px}p,li{max-width:90ch}a{color:#087e83}table{width:100%;border-collapse:collapse;margin:20px 0;font-size:14px}th{background:#e7f3f3;text-align:left;color:#07565c}td,th{padding:11px 14px;border:1px solid #dce7e9;vertical-align:top}tr:nth-child(even) td{background:#fafcfc}pre{overflow:auto;background:#142934;color:#e5f4f4;padding:20px;border-radius:6px;line-height:1.5;font-size:13px}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}p code,li code,td code{background:#eef3f4;padding:2px 5px;border-radius:3px;font-size:.88em}nav{background:#f3f8f8;border:1px solid #dce7e9;padding:16px 22px;margin:24px 0}nav ul{margin:0;padding-left:20px}footer{margin-top:40px;padding-top:14px;border-top:1px solid #dce7e9;color:#667982;font-size:13px}@media(max-width:700px){main{margin:0;padding:26px 20px;box-shadow:none}h1{font-size:27px}table{display:block;overflow:auto}td,th{min-width:150px}pre{font-size:12px}}@media print{body{background:white;font-size:10pt}main{margin:0;padding:0;border:0;box-shadow:none;max-width:none}nav{display:none}h1{font-size:22pt}h2{font-size:15pt;break-after:avoid}h3{break-after:avoid}table{font-size:9pt}tr{break-inside:avoid}pre{white-space:pre-wrap;color:#172b36;background:#f1f5f6;border:1px solid #dce7e9;break-inside:avoid}a{color:inherit}}</style></head><body><main>
+
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#meter-inventory-by-reporting-date--user-guide"
+id="toc-meter-inventory-by-reporting-date--user-guide">Meter Inventory
+by Reporting Date — User Guide</a>
+<ul>
+<li><a href="#what-this-report-counts"
+id="toc-what-this-report-counts">What this report counts</a></li>
+<li><a href="#how-the-code-works" id="toc-how-the-code-works">How the
+code works</a></li>
+<li><a href="#meter-date-checks" id="toc-meter-date-checks">Meter date
+checks</a></li>
+<li><a href="#meter-selection-and-sizes"
+id="toc-meter-selection-and-sizes">Meter selection and sizes</a></li>
+<li><a href="#results" id="toc-results">Results</a></li>
+<li><a href="#source-tables" id="toc-source-tables">Source
+tables</a></li>
+<li><a href="#set-the-reporting-periods"
+id="toc-set-the-reporting-periods">Set the reporting periods</a>
+<ul>
+<li><a href="#fiscal-years" id="toc-fiscal-years">Fiscal years</a></li>
+<li><a href="#calendar-years" id="toc-calendar-years">Calendar
+years</a></li>
+<li><a href="#compare-fiscal-and-calendar-cutoffs"
+id="toc-compare-fiscal-and-calendar-cutoffs">Compare fiscal and calendar
+cutoffs</a></li>
+</ul></li>
+<li><a href="#category-and-exclusion-rules"
+id="toc-category-and-exclusion-rules">Category and exclusion
+rules</a></li>
+<li><a href="#run-and-export" id="toc-run-and-export">Run and
+export</a></li>
+<li><a href="#historical-limits" id="toc-historical-limits">Historical
+limits</a></li>
+<li><a href="#checks-and-common-issues"
+id="toc-checks-and-common-issues">Checks and common issues</a></li>
+<li><a href="#revision-history" id="toc-revision-history">Revision
+history</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="meter-inventory-by-reporting-date--user-guide">Meter Inventory
+by Reporting Date — User Guide</h1>
+<p><strong>SQL author:</strong> Teo Espero, IT Administrator, Marina
+Coast Water District<br />
+<strong>SQL version:</strong> 1.3<br />
+<strong>Guide date:</strong> October 13, 2026<br />
+<strong>Source reviewed:</strong>
+<code>2026-1001-Meter_Inventory_By_Reporting_Date(3).sql</code></p>
+<h2 id="what-this-report-counts">What this report counts</h2>
+<p>This report counts lots that have at least one qualifying meter at
+each entered cutoff. It does not count every physical meter or require
+an open customer account. One lot with three qualifying meters normally
+contributes one count, and the detail output displays one selected meter
+for that lot.</p>
+<p>The summary stores distinct period/lot/category combinations. The
+control totals count distinct lot numbers. If a lot has conflicting
+categories in the source records, category totals can sum to more than
+the distinct lot total.</p>
+<h2 id="how-the-code-works">How the code works</h2>
+<ol type="1">
+<li><code>@ReportingPeriods</code> supplies the cutoff dates and column
+headings; validation checks the list and selected detail ID.</li>
+<li><code>YearEnds</code> makes each entered cutoff available to the
+query. <code>LotData</code> reads the current lot category, connection
+type, and assembled service address.</li>
+<li>The query combines each period with the lots and uses
+<code>EXISTS</code> to check for at least one qualifying meter. Multiple
+meter records do not multiply the lot count.</li>
+<li><code>#Inventory</code> stores distinct qualifying
+period/lot/category combinations.</li>
+<li>The dynamic summary groups these records by category and places the
+selected periods in columns.</li>
+<li>Control totals show the actual dates and distinct lot counts for
+every period.</li>
+<li>The third result starts from the selected period's inventory lots
+and uses <code>OUTER APPLY TOP (1)</code> to attach one meter and its
+type information.</li>
+<li>The temporary inventory table is dropped.</li>
+</ol>
+<h2 id="meter-date-checks">Meter date checks</h2>
+<pre class="sql"><code>mc.install_date &lt;= AsOfDate
+AND (mc.remove_date IS NULL OR mc.remove_date &gt; AsOfDate)</code></pre>
+<p>A missing installation date is excluded. No active lot or meter
+status is required for inclusion. The comparisons preserve the original
+report's rules.</p>
+<p><strong>Time-of-day matters if these columns contain
+timestamps.</strong> A DATE cutoff is midnight. A meter installed at
+noon on June 30 does not satisfy
+<code>install_date &lt;= '2026-06-30'</code>; a meter removed at noon
+that day does satisfy <code>remove_date &gt; '2026-06-30'</code>. A
+removal stored exactly at midnight is excluded. If the source columns
+contain dates only, installation on the cutoff qualifies and removal on
+the cutoff does not.</p>
+<p>The account summary uses full calendar-day rules, so the two scripts
+can differ on cutoff-day timestamp records even before accounting for
+their different counting units.</p>
+<h2 id="meter-selection-and-sizes">Meter selection and sizes</h2>
+<p>Among meters meeting the same date and serial rules, the detail
+output prefers a meter whose current connection status is Active. Ties
+use the highest <code>ub_meter_con_id</code>. The highest ID is a
+tie-breaker, not proof of the latest installation date.</p>
+<p>Size comes from <code>ub_device_type.device_size</code>. The value is
+returned as stored, without conversion or assumed units. A missing type
+or size remains NULL and does not remove the lot. The selection uses the
+lot number; it does not show all devices on that lot.</p>
+<h2 id="results">Results</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Result</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1 — Category summary</td>
+<td>ST_Category rows; one column for each entered period.</td>
+</tr>
+<tr class="even">
+<td>2 — Control totals</td>
+<td>PeriodLabel, ReportingEndDate, QualifyingLotCount for every
+period.</td>
+</tr>
+<tr class="odd">
+<td>3 — Meter details</td>
+<td>Selected period's lots and selected meter information.</td>
+</tr>
+</tbody>
+</table>
+<p>Detail fields: PeriodID, PeriodLabel, ReportingEndDate, LotNo,
+ST_Category, OriginalSTCategory, ConnectionType, ServiceAddress, City,
+State, MeterConnectionID, DeviceID, RouteNo, MeterSerialNumber,
+MeterSize, MeterManufacturer, MeterModel, MeterInstallDate,
+MeterRemoveDate, and CurrentMeterStatus.</p>
+<h2 id="source-tables">Source tables</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Table in Springbrook0.dbo</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>lot</td>
+<td>Lot identity, categories, connection type, and address.</td>
+</tr>
+<tr class="even">
+<td>ub_meter_con</td>
+<td>Meter-to-lot connection, dates, route, status, and connection
+ID.</td>
+</tr>
+<tr class="odd">
+<td>ub_device</td>
+<td>Serial number and device type link.</td>
+</tr>
+<tr class="even">
+<td>ub_device_type</td>
+<td>Size, manufacturer, and model for the selected meter.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="set-the-reporting-periods">Set the reporting periods</h2>
+<p>Replace the existing
+<code>INSERT INTO @ReportingPeriods ... VALUES ...;</code> block. Do not
+add another insert with the same IDs or labels.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Setting</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>PeriodID</code></td>
+<td>Unique integer that controls column order. It is not the year
+itself.</td>
+</tr>
+<tr class="even">
+<td><code>PeriodLabel</code></td>
+<td>Unique heading for the summary column.</td>
+</tr>
+<tr class="odd">
+<td><code>EndDate</code></td>
+<td>The exact cutoff date for that column. Use
+<code>YYYY-MM-DD</code>.</td>
+</tr>
+<tr class="even">
+<td><code>@DetailPeriodID</code></td>
+<td>ID from the list to use for the detail output.</td>
+</tr>
+</tbody>
+</table>
+<p>The supplied defaults contain FY2017 through FY2026, each ending June
+30. ID 10 selects FY2026 details. The label does not calculate the
+cutoff: changing <code>FY2025</code> to <code>CY2025</code> without
+changing its date still uses June 30.</p>
+<h3 id="fiscal-years">Fiscal years</h3>
+<pre class="sql"><code>INSERT INTO @ReportingPeriods (PeriodID, PeriodLabel, EndDate)
+VALUES
+    (1, N&#39;FY2024&#39;, &#39;2024-06-30&#39;),
+    (2, N&#39;FY2025&#39;, &#39;2025-06-30&#39;),
+    (3, N&#39;FY2026&#39;, &#39;2026-06-30&#39;);
+
+DECLARE @DetailPeriodID INT = 3;</code></pre>
+<h3 id="calendar-years">Calendar years</h3>
+<pre class="sql"><code>INSERT INTO @ReportingPeriods (PeriodID, PeriodLabel, EndDate)
+VALUES
+    (1, N&#39;CY2023&#39;, &#39;2023-12-31&#39;),
+    (2, N&#39;CY2024&#39;, &#39;2024-12-31&#39;),
+    (3, N&#39;CY2025&#39;, &#39;2025-12-31&#39;);
+
+DECLARE @DetailPeriodID INT = 3;</code></pre>
+<h3 id="compare-fiscal-and-calendar-cutoffs">Compare fiscal and calendar
+cutoffs</h3>
+<pre class="sql"><code>INSERT INTO @ReportingPeriods (PeriodID, PeriodLabel, EndDate)
+VALUES
+    (1, N&#39;FY2025&#39;, &#39;2025-06-30&#39;),
+    (2, N&#39;CY2025&#39;, &#39;2025-12-31&#39;),
+    (3, N&#39;Sep2026&#39;, &#39;2026-09-30&#39;);
+
+DECLARE @DetailPeriodID INT = 2;</code></pre>
+<p>Each example replaces the existing detail declaration as well.
+Declare <code>@DetailPeriodID</code> only once. These are counts at
+individual cutoff dates, not counts of everyone served during a date
+range.</p>
+<h2 id="category-and-exclusion-rules">Category and exclusion rules</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Stored value or condition</th>
+<th>Treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Connection Type <code>lot.misc_16</code> equals Irrigation</td>
+<td>Category becomes Landscape, regardless of original ST Category.</td>
+</tr>
+<tr class="even">
+<td>ST Category is a capitalization variation of Multi Family</td>
+<td>Category becomes Multi Family.</td>
+</tr>
+<tr class="odd">
+<td>ST Category is blank or NULL</td>
+<td>Category becomes Unspecified.</td>
+</tr>
+<tr class="even">
+<td>Other ST Category</td>
+<td>Trimmed value is retained.</td>
+</tr>
+<tr class="odd">
+<td>Service address contains SEWER, HYDRANT, or DELETED</td>
+<td>Excluded.</td>
+</tr>
+<tr class="even">
+<td>Meter serial contains <code>-S</code> or HYDRANT</td>
+<td>Excluded.</td>
+</tr>
+<tr class="odd">
+<td>Bay View or recycled water</td>
+<td>Included unless excluded by another rule.</td>
+</tr>
+</tbody>
+</table>
+<p>Irrigation and Multi Family comparisons ignore case and surrounding
+spaces. The <code>-S</code> comparison follows the database collation.
+Missing serial numbers are allowed, but a matching device record must
+exist. These inherited exclusions do not establish a complete
+water-service classification.</p>
+<h2 id="run-and-export">Run and export</h2>
+<ol type="1">
+<li>Open the SQL file in SSMS connected to SQL Server 2016 or later,
+with read permission for <code>Springbrook0.dbo</code> source
+tables.</li>
+<li>Replace the period list and set the detail ID to an ID in that
+list.</li>
+<li>Run the entire script in one batch. Do not add <code>GO</code>
+within it or execute only the final SELECT.</li>
+<li>Review the summary, control totals, and details in the three Results
+grids.</li>
+<li>Export the required grids to Excel or CSV and record the run date
+and cutoff dates with the saved results.</li>
+</ol>
+<p>The script changes only session temporary tables. It does not update
+Springbrook records. Dynamic SQL builds the period columns in ID order;
+<code>QUOTENAME</code> protects the column labels. An existing category
+with no qualifying records in a particular period shows zero. A category
+absent from all requested periods is not displayed.</p>
+<h2 id="historical-limits">Historical limits</h2>
+<p>Both scripts use historical dates currently stored in Springbrook,
+not a restored database snapshot. Later corrections can change results
+for the same cutoff. Categories, addresses, and connection types reflect
+current lot records. Current status is not a history of status
+changes.</p>
+<p>Save dated exports to preserve what each run returned. A future
+cutoff can include scheduled records already entered; it is not a
+forecast. Neither guide establishes that the SQL was executed or
+validated against the live database.</p>
+<h2 id="checks-and-common-issues">Checks and common issues</h2>
+<ul>
+<li>Detail ID not found: select an ID in the entered period list.</li>
+<li>Duplicate ID or label: give each period its own unique ID and
+label.</li>
+<li>Different count from the account report: expected when lots lack
+open accounts or have multiple qualifying accounts. Also check the
+timestamp rules above.</li>
+<li>Blank size: inspect the device type link and stored size; do not
+replace a missing size with zero.</li>
+<li>Detail rows exceed distinct lots: check duplicate or conflicting lot
+records and the lot join before assuming there are more meters.</li>
+<li>Zero qualifying records: the category summary can be empty; control
+totals still show the requested periods with zero.</li>
+</ul>
+<h2 id="revision-history">Revision history</h2>
+<p>All revisions below are dated October 13, 2026 and credited to Teo
+Espero in the supplied SQL.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Version</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1.0</td>
+<td>Multi-year lot inventory and inherited eligibility/category
+rules.</td>
+</tr>
+<tr class="even">
+<td>1.1</td>
+<td>Individual period labels, cutoff dates, and totals.</td>
+</tr>
+<tr class="odd">
+<td>1.2</td>
+<td>Authorship, reporting documentation, and inline comments.</td>
+</tr>
+<tr class="even">
+<td>1.3</td>
+<td>Selected-period meter details, including sizes.</td>
+</tr>
+</tbody>
+</table>
+<footer>Marina Coast Water District · SQL user guide · October 13, 2026</footer></main></body></html>

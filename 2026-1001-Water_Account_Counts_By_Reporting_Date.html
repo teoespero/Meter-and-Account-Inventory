@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Water Account Count Guide</title><style>*{box-sizing:border-box}body{margin:0;background:#f1f5f6;color:#20313c;font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1080px;margin:36px auto;background:#fff;padding:48px 56px;border-top:7px solid #087e83;box-shadow:0 8px 36px #1231400b}h1{font-size:32px;line-height:1.2;color:#07565c;margin-top:0}h2{font-size:23px;margin-top:38px;padding-top:10px;border-top:1px solid #dce7e9;color:#07565c}h3{font-size:18px;margin-top:26px}p,li{max-width:90ch}a{color:#087e83}table{width:100%;border-collapse:collapse;margin:20px 0;font-size:14px}th{background:#e7f3f3;text-align:left;color:#07565c}td,th{padding:11px 14px;border:1px solid #dce7e9;vertical-align:top}tr:nth-child(even) td{background:#fafcfc}pre{overflow:auto;background:#142934;color:#e5f4f4;padding:20px;border-radius:6px;line-height:1.5;font-size:13px}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}p code,li code,td code{background:#eef3f4;padding:2px 5px;border-radius:3px;font-size:.88em}nav{background:#f3f8f8;border:1px solid #dce7e9;padding:16px 22px;margin:24px 0}nav ul{margin:0;padding-left:20px}footer{margin-top:40px;padding-top:14px;border-top:1px solid #dce7e9;color:#667982;font-size:13px}@media(max-width:700px){main{margin:0;padding:26px 20px;box-shadow:none}h1{font-size:27px}table{display:block;overflow:auto}td,th{min-width:150px}pre{font-size:12px}}@media print{body{background:white;font-size:10pt}main{margin:0;padding:0;border:0;box-shadow:none;max-width:none}nav{display:none}h1{font-size:22pt}h2{font-size:15pt;break-after:avoid}h3{break-after:avoid}table{font-size:9pt}tr{break-inside:avoid}pre{white-space:pre-wrap;color:#172b36;background:#f1f5f6;border:1px solid #dce7e9;break-inside:avoid}a{color:inherit}}</style></head><body><main>
+
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#water-account-counts-by-reporting-date--user-guide"
+id="toc-water-account-counts-by-reporting-date--user-guide">Water
+Account Counts by Reporting Date — User Guide</a>
+<ul>
+<li><a href="#what-this-report-counts"
+id="toc-what-this-report-counts">What this report counts</a></li>
+<li><a href="#how-the-code-works" id="toc-how-the-code-works">How the
+code works</a></li>
+<li><a href="#account-and-meter-date-checks"
+id="toc-account-and-meter-date-checks">Account and meter date
+checks</a></li>
+<li><a href="#meter-size-in-the-details"
+id="toc-meter-size-in-the-details">Meter size in the details</a></li>
+<li><a href="#results" id="toc-results">Results</a></li>
+<li><a href="#source-tables" id="toc-source-tables">Source
+tables</a></li>
+<li><a href="#set-the-reporting-periods"
+id="toc-set-the-reporting-periods">Set the reporting periods</a>
+<ul>
+<li><a href="#fiscal-years" id="toc-fiscal-years">Fiscal years</a></li>
+<li><a href="#calendar-years" id="toc-calendar-years">Calendar
+years</a></li>
+<li><a href="#compare-fiscal-and-calendar-cutoffs"
+id="toc-compare-fiscal-and-calendar-cutoffs">Compare fiscal and calendar
+cutoffs</a></li>
+</ul></li>
+<li><a href="#category-and-exclusion-rules"
+id="toc-category-and-exclusion-rules">Category and exclusion
+rules</a></li>
+<li><a href="#run-and-export" id="toc-run-and-export">Run and
+export</a></li>
+<li><a href="#historical-limits" id="toc-historical-limits">Historical
+limits</a></li>
+<li><a href="#reconcile-the-totals"
+id="toc-reconcile-the-totals">Reconcile the totals</a></li>
+<li><a href="#checks-and-common-issues"
+id="toc-checks-and-common-issues">Checks and common issues</a></li>
+<li><a href="#revision-history" id="toc-revision-history">Revision
+history</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="water-account-counts-by-reporting-date--user-guide">Water
+Account Counts by Reporting Date — User Guide</h1>
+<p><strong>SQL author:</strong> Teo Espero, IT Administrator, Marina
+Coast Water District<br />
+<strong>SQL version:</strong> 1.6<br />
+<strong>Guide date:</strong> October 13, 2026<br />
+<strong>Source reviewed:</strong>
+<code>2026-1001-Water_Account_Counts_By_Reporting_Date(1).sql</code></p>
+<h2 id="what-this-report-counts">What this report counts</h2>
+<p>This report counts distinct customer-number/customer-sequence pairs
+whose account dates cover each cutoff and whose lot has at least one
+qualifying meter. It considers all qualifying accounts instead of
+selecting only one account per lot.</p>
+<p>The category summary deduplicates accounts within each period and
+category. The control result separately counts distinct accounts across
+categories and distinct lots. Two qualifying accounts on one lot can
+contribute two accounts but one lot. Several meters on one lot do not
+multiply an account count.</p>
+<p>The report reconstructs eligibility from dates. It does not prove
+historical active status where closure dates are missing, nor does it
+independently identify water service through an account-specific service
+table.</p>
+<h2 id="how-the-code-works">How the code works</h2>
+<ol type="1">
+<li>Validate <code>@ReportingPeriods</code> and
+<code>@DetailPeriodID</code>.</li>
+<li><code>YearEnds</code> supplies each cutoff and heading;
+<code>LotData</code> reads current lot categories and assembled
+addresses.</li>
+<li>Join <code>ub_master</code> to each period using account start and
+end date conditions, then join its lot.</li>
+<li>Use <code>EXISTS</code> to require a date-qualified meter on that
+lot without multiplying account rows.</li>
+<li>Use <code>OUTER APPLY TOP (1)</code> to select a meter size for
+display. This does not determine account eligibility.</li>
+<li>Store the qualifying master/lot records in
+<code>#EligibleAccountDetails</code>.</li>
+<li>Build <code>#EligibleAccounts</code> from distinct
+period/category/customer/sequence combinations.</li>
+<li>Produce the category matrix, selected-period control totals, and
+selected-period details; then drop both temporary tables.</li>
+</ol>
+<h2 id="account-and-meter-date-checks">Account and meter date
+checks</h2>
+<pre class="sql"><code>um.connect_date &lt; DATEADD(DAY, 1, AsOfDate)
+AND (um.final_date IS NULL OR CONVERT(DATE, um.final_date) &gt; AsOfDate)</code></pre>
+<p>Meter installation/removal checks use the same pattern. Starts and
+installations anywhere on the cutoff day qualify. Finalizations and
+removals on the cutoff calendar day are excluded, regardless of time.
+Missing connection or installation dates are excluded. NULL end/removal
+dates are treated as still open/not removed.</p>
+<p>For a June 30, 2026 cutoff:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Account dates</th>
+<th>Qualifies by account dates?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Started June 30 at noon; no end date</td>
+<td>Yes.</td>
+</tr>
+<tr class="even">
+<td>Started earlier; ended July 1</td>
+<td>Yes.</td>
+</tr>
+<tr class="odd">
+<td>Started earlier; ended June 30</td>
+<td>No.</td>
+</tr>
+<tr class="even">
+<td>Starts July 1</td>
+<td>No.</td>
+</tr>
+<tr class="odd">
+<td>No connection date</td>
+<td>No.</td>
+</tr>
+</tbody>
+</table>
+<p>A qualifying account also needs a qualifying lot and meter. Current
+<code>acct_status</code> does not filter the account; a currently Final
+or Delete account can have dates that covered a past cutoff. A missing
+final date can also incorrectly retain an obsolete record, so inspect
+overlapping accounts rather than automatically excluding every currently
+non-active account.</p>
+<h2 id="meter-size-in-the-details">Meter size in the details</h2>
+<p><code>MeterSize</code> comes from
+<code>ub_device_type.device_size</code> for one selected meter on the
+account's lot. Selection prefers current Active meter status, then the
+highest connection record ID, among date-qualified meters. The highest
+ID does not guarantee the most recent installation.</p>
+<p>The size is returned as stored, without conversion or assumed units.
+Missing device type/size remains NULL. Several accounts on the same lot
+can display the same meter size because the link is through the lot, not
+an account-specific meter relationship.</p>
+<h2 id="results">Results</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Result</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1 — Category summary</td>
+<td>ST_Category rows and one column per entered reporting period.</td>
+</tr>
+<tr class="even">
+<td>2 — Selected-period controls</td>
+<td>PeriodID, PeriodLabel, ReportingEndDate, SumOfCategoryCounts,
+DistinctAccountCount, DistinctLotCount.</td>
+</tr>
+<tr class="odd">
+<td>3 — Account details</td>
+<td>Selected-period qualifying account/master records with dates and
+meter size.</td>
+</tr>
+</tbody>
+</table>
+<p>Detail fields: PeriodID, PeriodLabel, ReportingEndDate,
+AccountNumber, cust_no, cust_sequence, LotNo, ub_master_id, ST_Category,
+OriginalSTCategory, ConnectionType, ServiceAddress, AccountStartDate,
+AccountEndDate, CurrentAccountStatus, and MeterSize.</p>
+<p>AccountNumber is displayed with six customer digits and three
+sequence digits, such as <code>009755-005</code>. Counts use the
+original customer and sequence values rather than the formatted string.
+Keep account numbers as text when importing into Excel.</p>
+<h2 id="source-tables">Source tables</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Table in Springbrook0.dbo</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ub_master</td>
+<td>Account identity, connection/final dates, lot, current status.</td>
+</tr>
+<tr class="even">
+<td>lot</td>
+<td>Categories, connection type, and address.</td>
+</tr>
+<tr class="odd">
+<td>ub_meter_con</td>
+<td>Meter-to-lot connection and installation/removal dates.</td>
+</tr>
+<tr class="even">
+<td>ub_device</td>
+<td>Serial exclusion and device type link.</td>
+</tr>
+<tr class="odd">
+<td>ub_device_type</td>
+<td>Selected meter size for details.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="set-the-reporting-periods">Set the reporting periods</h2>
+<p>Replace the existing
+<code>INSERT INTO @ReportingPeriods ... VALUES ...;</code> block. Do not
+add another insert with the same IDs or labels.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Setting</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>PeriodID</code></td>
+<td>Unique integer that controls column order. It is not the year
+itself.</td>
+</tr>
+<tr class="even">
+<td><code>PeriodLabel</code></td>
+<td>Unique heading for the summary column.</td>
+</tr>
+<tr class="odd">
+<td><code>EndDate</code></td>
+<td>The exact cutoff date for that column. Use
+<code>YYYY-MM-DD</code>.</td>
+</tr>
+<tr class="even">
+<td><code>@DetailPeriodID</code></td>
+<td>ID from the list to use for the detail output.</td>
+</tr>
+</tbody>
+</table>
+<p>The supplied defaults contain FY2017 through FY2026, each ending June
+30. ID 10 selects FY2026 details. The label does not calculate the
+cutoff: changing <code>FY2025</code> to <code>CY2025</code> without
+changing its date still uses June 30.</p>
+<h3 id="fiscal-years">Fiscal years</h3>
+<pre class="sql"><code>INSERT INTO @ReportingPeriods (PeriodID, PeriodLabel, EndDate)
+VALUES
+    (1, N&#39;FY2024&#39;, &#39;2024-06-30&#39;),
+    (2, N&#39;FY2025&#39;, &#39;2025-06-30&#39;),
+    (3, N&#39;FY2026&#39;, &#39;2026-06-30&#39;);
+
+DECLARE @DetailPeriodID INT = 3;</code></pre>
+<h3 id="calendar-years">Calendar years</h3>
+<pre class="sql"><code>INSERT INTO @ReportingPeriods (PeriodID, PeriodLabel, EndDate)
+VALUES
+    (1, N&#39;CY2023&#39;, &#39;2023-12-31&#39;),
+    (2, N&#39;CY2024&#39;, &#39;2024-12-31&#39;),
+    (3, N&#39;CY2025&#39;, &#39;2025-12-31&#39;);
+
+DECLARE @DetailPeriodID INT = 3;</code></pre>
+<h3 id="compare-fiscal-and-calendar-cutoffs">Compare fiscal and calendar
+cutoffs</h3>
+<pre class="sql"><code>INSERT INTO @ReportingPeriods (PeriodID, PeriodLabel, EndDate)
+VALUES
+    (1, N&#39;FY2025&#39;, &#39;2025-06-30&#39;),
+    (2, N&#39;CY2025&#39;, &#39;2025-12-31&#39;),
+    (3, N&#39;Sep2026&#39;, &#39;2026-09-30&#39;);
+
+DECLARE @DetailPeriodID INT = 2;</code></pre>
+<p>Each example replaces the existing detail declaration as well.
+Declare <code>@DetailPeriodID</code> only once. These are counts at
+individual cutoff dates, not counts of everyone served during a date
+range.</p>
+<h2 id="category-and-exclusion-rules">Category and exclusion rules</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Stored value or condition</th>
+<th>Treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Connection Type <code>lot.misc_16</code> equals Irrigation</td>
+<td>Category becomes Landscape, regardless of original ST Category.</td>
+</tr>
+<tr class="even">
+<td>ST Category is a capitalization variation of Multi Family</td>
+<td>Category becomes Multi Family.</td>
+</tr>
+<tr class="odd">
+<td>ST Category is blank or NULL</td>
+<td>Category becomes Unspecified.</td>
+</tr>
+<tr class="even">
+<td>Other ST Category</td>
+<td>Trimmed value is retained.</td>
+</tr>
+<tr class="odd">
+<td>Service address contains SEWER, HYDRANT, or DELETED</td>
+<td>Excluded.</td>
+</tr>
+<tr class="even">
+<td>Meter serial contains <code>-S</code> or HYDRANT</td>
+<td>Excluded.</td>
+</tr>
+<tr class="odd">
+<td>Bay View or recycled water</td>
+<td>Included unless excluded by another rule.</td>
+</tr>
+</tbody>
+</table>
+<p>Irrigation and Multi Family comparisons ignore case and surrounding
+spaces. The <code>-S</code> comparison follows the database collation.
+Missing serial numbers are allowed, but a matching device record must
+exist. These inherited exclusions do not establish a complete
+water-service classification.</p>
+<h2 id="run-and-export">Run and export</h2>
+<ol type="1">
+<li>Open the SQL file in SSMS connected to SQL Server 2016 or later,
+with read permission for <code>Springbrook0.dbo</code> source
+tables.</li>
+<li>Replace the period list and set the detail ID to an ID in that
+list.</li>
+<li>Run the entire script in one batch. Do not add <code>GO</code>
+within it or execute only the final SELECT.</li>
+<li>Review the summary, control totals, and details in the three Results
+grids.</li>
+<li>Export the required grids to Excel or CSV and record the run date
+and cutoff dates with the saved results.</li>
+</ol>
+<p>The script changes only session temporary tables. It does not update
+Springbrook records. Dynamic SQL builds the period columns in ID order;
+<code>QUOTENAME</code> protects the column labels. An existing category
+with no qualifying records in a particular period shows zero. A category
+absent from all requested periods is not displayed.</p>
+<h2 id="historical-limits">Historical limits</h2>
+<p>Both scripts use historical dates currently stored in Springbrook,
+not a restored database snapshot. Later corrections can change results
+for the same cutoff. Categories, addresses, and connection types reflect
+current lot records. Current status is not a history of status
+changes.</p>
+<p>Save dated exports to preserve what each run returned. A future
+cutoff can include scheduled records already entered; it is not a
+forecast. Neither guide establishes that the SQL was executed or
+validated against the live database.</p>
+<h2 id="reconcile-the-totals">Reconcile the totals</h2>
+<p>Compare <code>SumOfCategoryCounts</code> with
+<code>DistinctAccountCount</code>. A difference means an account
+qualifies under more than one category. Inspect the account's lot/master
+records rather than adding the category totals and assuming they count
+unique accounts across categories.</p>
+<p>The third result retains distinct master/lot details. Different
+master records for the same account can produce more detail rows than
+distinct accounts. For comparison with another export, match
+customer/sequence or AccountNumber, then inspect LotNo and dates.</p>
+<h2 id="checks-and-common-issues">Checks and common issues</h2>
+<ul>
+<li>Detail ID not found: choose an existing ID. The default ID 10 must
+change when the replacement list uses different IDs.</li>
+<li>Blank/missing end dates: review old Delete records and overlapping
+accounts before using official totals.</li>
+<li>Duplicate customer accounts on a lot: may be legitimate services or
+incomplete closure records; review the source evidence.</li>
+<li>Count differs from meter inventory: account rules exclude lots
+without qualifying accounts; multiple accounts can also exceed
+one-per-lot counts. Cutoff-day timestamp treatment differs between the
+scripts.</li>
+<li>Category split: only Multi Family variations and Irrigation are
+normalized explicitly; other spelling variations can remain.</li>
+<li>Cutoff <code>9999-12-31</code>: rejected because the next-day
+comparison would overflow.</li>
+<li>No qualifying accounts: summary may be empty; selected-period
+controls show zero.</li>
+</ul>
+<h2 id="revision-history">Revision history</h2>
+<p>All revisions below are dated October 13, 2026 and credited to Teo
+Espero in the supplied SQL.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Version</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1.0</td>
+<td>Account selection for multiple year-end dates.</td>
+</tr>
+<tr class="even">
+<td>1.1</td>
+<td>Period columns and Irrigation-to-Landscape mapping.</td>
+</tr>
+<tr class="odd">
+<td>1.2</td>
+<td>Reconciliation totals and account detail output.</td>
+</tr>
+<tr class="even">
+<td>1.3</td>
+<td>Multi Family capitalization standardized.</td>
+</tr>
+<tr class="odd">
+<td>1.4</td>
+<td>Individual period labels and cutoff dates.</td>
+</tr>
+<tr class="even">
+<td>1.5</td>
+<td>Meter size added to account details.</td>
+</tr>
+<tr class="odd">
+<td>1.6</td>
+<td>Authorship, reporting documentation, and inline comments.</td>
+</tr>
+</tbody>
+</table>
+<footer>Marina Coast Water District · SQL user guide · October 13, 2026</footer></main></body></html>
